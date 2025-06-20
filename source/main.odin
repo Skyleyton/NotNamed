@@ -25,6 +25,7 @@ TODO:
 /*
 IN THE WORK:
     - Appliquer le GAME_SCALE à tous les éléments du jeu.
+    - Revoir le calcul des rectangles pour les hitboxes
 */
 
 /*
@@ -46,8 +47,8 @@ Vector2f :: [2]f32
 MAX_DIST :: 1
 
 // Le nombre de tiles dans le monde pour l'instant.
-NUM_TILES_X :: 10
-NUM_TILES_Y :: 10
+NUM_TILES_X :: 20
+NUM_TILES_Y :: 20
 
 // La taille d'une tile en pixels.
 GAME_SCALE :: 1
@@ -134,6 +135,20 @@ Game :: struct {
 textures: [Texture_type]rl.Texture // Détecte tout seul le nombre max d'éléments.
 game: Game
 
+// Dessine une texture avec son origine à son centre
+draw_sprite :: proc(texture: rl.Texture, pos: Vec2, rotation:f32=0, scale:f32=1, pivot:Pivot=.center_center, tint:=rl.WHITE) {
+    pivot := get_pivot_value(pivot)
+    
+    rl.DrawTexturePro(texture,
+        {0, 0, f32(texture.width), f32(texture.height)},
+        {pos.x, pos.y, f32(texture.width) * scale, f32(texture.height) * scale},
+        {(f32(texture.width) * pivot[0]) * scale, (f32(texture.height) * pivot[1]) * scale},
+        rotation,
+        tint
+    )
+}
+
+
 // Retourne true si réussi, sinon false.
 // WORKING
 game_create_n_number_of_entity :: proc(game: ^Game, number: u32, en_type: Entity_type) -> bool {
@@ -154,8 +169,9 @@ game_create_n_number_of_entity :: proc(game: ^Game, number: u32, en_type: Entity
         #partial switch en_type {
             // On mets tout au hasard, on changera plus tard.
             case .player:
+            pos: rl.Vector2 = {rand.float32_range(0.0, f32(NUM_TILES_X * (TILE_LENGTH-1))), rand.float32_range(0.0, f32(NUM_TILES_Y * (TILE_LENGTH-1)))} // Random pos in the game world.
             game.entities[i] = Entity {
-                pos = {rand.float32_range(0.0, f32(NUM_TILES_X * (TILE_LENGTH-1))), rand.float32_range(0.0, f32(NUM_TILES_Y * (TILE_LENGTH-1)))},
+                pos = pos,
                 vel = {0.0, 0.0},
                 type = en_type,
                 alive = true,
@@ -163,15 +179,16 @@ game_create_n_number_of_entity :: proc(game: ^Game, number: u32, en_type: Entity
                 flags = {},
                 texture = textures_array[.player],
                 rect = {
-                    {0.0, 0.0},
+                    {pos.x, pos.y},
                     f32(textures_array[.player].width),
                     f32(textures_array[.player].height)
                 }
             }
 
             case .tree0:
+            pos: rl.Vector2 = {rand.float32_range(0.0, f32(NUM_TILES_X * (TILE_LENGTH-1))), rand.float32_range(0.0, f32(NUM_TILES_Y * (TILE_LENGTH-1)))} // Random pos in the game world.
             game.entities[i] = Entity {
-                pos = {rand.float32_range(0.0, f32(NUM_TILES_X * (TILE_LENGTH-1))), rand.float32_range(0.0, f32(NUM_TILES_Y * (TILE_LENGTH-1)))},
+                pos = pos,
                 vel = {0.0, 0.0},
                 type = en_type,
                 alive = true,
@@ -179,15 +196,16 @@ game_create_n_number_of_entity :: proc(game: ^Game, number: u32, en_type: Entity
                 flags = {},
                 texture = textures_array[.tree0],
                 rect = {
-                    {0.0, 0.0},
+                    {pos.x, pos.y},
                     f32(textures_array[.tree0].width),
                     f32(textures_array[.tree0].height)
                 }         
             }
 
             case .rock0:
+            pos: rl.Vector2 = {rand.float32_range(0.0, f32(NUM_TILES_X * (TILE_LENGTH-1))), rand.float32_range(0.0, f32(NUM_TILES_Y * (TILE_LENGTH-1)))} // Random pos in the game world.
             game.entities[i] = Entity {
-                pos = {rand.float32_range(0.0, f32(NUM_TILES_X * (TILE_LENGTH-1))), rand.float32_range(0.0, f32(NUM_TILES_Y * (TILE_LENGTH-1)))}, // Random pos in the game world.
+                pos = pos,
                 vel = {0.0, 0.0},
                 type = en_type,
                 alive = true,
@@ -195,7 +213,7 @@ game_create_n_number_of_entity :: proc(game: ^Game, number: u32, en_type: Entity
                 flags = {},
                 texture = textures_array[.rock0],
                 rect = {
-                    {0.0, 0.0},
+                    {pos.x, pos.y * 0.5},
                     f32(textures_array[.rock0].width),
                     f32(textures_array[.rock0].height)
                 }
@@ -350,8 +368,8 @@ game_get_tile_from_world_pos :: proc(position: rl.Vector2, camera2D: rl.Camera2D
 game_init :: proc(game: ^Game) {
     game_create_tiles(game)
     game_create_n_number_of_entity(game, 1, .player)
-    game_create_n_number_of_entity(game, 10, .rock0)
-    game_create_n_number_of_entity(game, 2, .tree0)
+    game_create_n_number_of_entity(game, 15, .rock0)
+    game_create_n_number_of_entity(game, 12, .tree0)
     game_put_entity_to_tiles(game)
     game_check_tiles_occuped(game)
 }
@@ -387,17 +405,10 @@ animate_vector2_to_target :: proc(value: ^rl.Vector2, target: rl.Vector2, delta_
     animate_f32_to_target(&value.y, target.y, delta_time, rate)
 }
 
-// IN THE WORK
-draw_from_pivot :: proc(sprite: rl.Texture, position: rl.Vector2, pivot:=Pivot.top_left, override_color:=rl.WHITE) {
-    sprite_size: rl.Vector2 = {f32(sprite.width), f32(sprite.height)}
-    sprite_pos := position - get_pivot_offset(sprite_size, pivot)
-
-    rl.DrawTextureV(sprite, sprite_pos, override_color)
-}
-
 main :: proc() {
     fmt.println("Raylib init !")
     rl.InitWindow(WINDOW_W, WINDOW_H, "Broken Lands"); defer rl.CloseWindow()
+    rl.SetConfigFlags({.WINDOW_RESIZABLE})
     rl.SetTargetFPS(240)
 
     game_init(&game); defer game_quit(&game)
@@ -491,9 +502,13 @@ main :: proc() {
         game_check_tiles_occuped(&game)
 
         for &en in game.entities {
-            y_offset := TILE_LENGTH - en.texture.height
-            en.rect.pos.x = en.pos.x
-            en.rect.pos.y = en.pos.y + f32(y_offset)
+            en.rect.pos.x = en.pos.x - (f32(en.texture.width) / 2)
+            if en.type == .tree0 {
+                en.rect.pos.y = en.pos.y - f32(en.texture.height)                
+            }
+            else {
+                en.rect.pos.y = en.pos.y - (f32(en.texture.height) / 2)
+            }
         }
 
         // Tiles rendering
@@ -506,10 +521,13 @@ main :: proc() {
                     //     rl.DrawTextureV(game.textures_array[.herb], {f32(x) * TILE_LENGTH, f32(y) * TILE_LENGTH}, rl.RED) // Need to multiply by TILE_LENGTH
                     // }
                     // Permets d'appliquer un scaling.
-                    rl.DrawTextureEx(tile.texture, {f32(x) * TILE_LENGTH, f32(y) * TILE_LENGTH}, rotation=0, scale=GAME_SCALE, tint=rl.WHITE) // Need to multiply by TILE_LENGTH
+
+                    draw_sprite(tile.texture, {f32(x) * TILE_LENGTH, f32(y) * TILE_LENGTH}, rotation=0, scale=GAME_SCALE)
+                    // rl.DrawTextureEx(tile.texture, {f32(x) * TILE_LENGTH, f32(y) * TILE_LENGTH}, rotation=0, scale=GAME_SCALE, tint=rl.WHITE) // Need to multiply by TILE_LENGTH
                     when ODIN_DEBUG { // En cas de débugage.
                         if .occuped in tile.flags {
-                            rl.DrawTextureEx(tile.texture, {f32(x) * TILE_LENGTH, f32(y) * TILE_LENGTH}, rotation=0, scale=GAME_SCALE, tint=rl.BLUE) // Need to multiply by TILE_LENGTH
+                            // rl.DrawTextureEx(tile.texture, {f32(x) * TILE_LENGTH, f32(y) * TILE_LENGTH}, rotation=0, scale=GAME_SCALE, tint=rl.BLUE) // Need to multiply by TILE_LENGTH
+                            draw_sprite(tile.texture, {f32(x) * TILE_LENGTH, f32(y) * TILE_LENGTH}, rotation=0, scale=GAME_SCALE, tint=rl.BLUE)
                         }
                     }
                 }
@@ -523,29 +541,35 @@ main :: proc() {
                 continue
             }
 
-            y_offset := TILE_LENGTH - en.texture.height
-
             #partial switch en.type {
                 case .player:
-                    rl.DrawTextureV(en.texture, {en.pos.x, en.pos.y + f32(y_offset)}, rl.WHITE)
-                    when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.rect.pos.x), i32(en.rect.pos.y + f32(y_offset)), i32(en.rect.width), i32(en.rect.height), rl.RED)
+                    // rl.DrawTextureV(en.texture, {en.pos.x, en.pos.y + f32(y_offset)}, rl.WHITE)
+                    draw_sprite(en.texture, {en.pos.x, en.pos.y}, rotation=0, scale=GAME_SCALE)
+                    // when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.pos.x) - i32(en.texture.width / 2), i32(en.pos.y) - i32(en.texture.height / 2), i32(en.texture.width), i32(en.texture.height), rl.RED)
+                    when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.rect.pos.x), i32(en.rect.pos.y), i32(en.texture.width), i32(en.texture.height), rl.RED)
 
                 case .rock0:
                     if .hovered in en.flags {
-                        rl.DrawTextureV(en.texture, {en.pos.x, en.pos.y + f32(y_offset)}, rl.GRAY)
+                        draw_sprite(en.texture, {en.pos.x, en.pos.y}, rotation=0, scale=GAME_SCALE, tint=rl.GRAY)
+                        // rl.DrawTextureV(en.texture, {en.pos.x, en.pos.y + f32(y_offset)}, rl.GRAY)
                     }
                     else {
-                        rl.DrawTextureV(en.texture, {en.pos.x, en.pos.y + f32(y_offset)}, rl.WHITE)
-                        when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.pos.x), i32(en.pos.y + f32(y_offset)), en.texture.width, en.texture.height, rl.RED)
+                        // rl.DrawTextureV(en.texture, {en.pos.x, en.pos.y + f32(y_offset)}, rl.WHITE)
+                        draw_sprite(en.texture, {en.pos.x, en.pos.y}, rotation=0, scale=GAME_SCALE)
+                        when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.rect.pos.x), i32(en.rect.pos.y), i32(en.texture.width), i32(en.texture.height), rl.RED)
+                        // when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.pos.x) - i32(en.texture.width / 2), i32(en.pos.y) - i32(en.texture.height / 2), i32(en.texture.width), i32(en.texture.height), rl.RED)
                     }
 
                 case .tree0:
                     if .hovered in en.flags {
-                        rl.DrawTextureV(en.texture, {en.pos.x, en.pos.y + f32(y_offset)}, rl.GRAY)
+                        // rl.DrawTextureV(en.texture, {en.pos.x, en.pos.y + f32(y_offset)}, rl.GRAY)
+                        draw_sprite(en.texture, {en.pos.x, en.pos.y}, rotation=0, scale=GAME_SCALE, pivot=.bottom_center,tint=rl.GRAY)
                     }
                     else {
-                        rl.DrawTextureV(en.texture, {en.pos.x, en.pos.y + f32(y_offset)}, rl.WHITE)
-                        when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.pos.x), i32(en.pos.y + f32(y_offset)), en.texture.width, en.texture.height, rl.RED)
+                        // rl.DrawTextureV(en.texture, {en.pos.x, en.pos.y + f32(y_offset)}, rl.WHITE)
+                        draw_sprite(en.texture, {en.pos.x, en.pos.y}, rotation=0, scale=GAME_SCALE, pivot=.bottom_center)
+                        when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.rect.pos.x), i32(en.rect.pos.y), i32(en.texture.width), i32(en.texture.height), rl.RED)
+                        // when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.pos.x) - i32(en.texture.width / 2), i32(en.pos.y) - i32(en.texture.height / 2), i32(en.texture.width), i32(en.texture.height), rl.RED)
                     }
             }
         }

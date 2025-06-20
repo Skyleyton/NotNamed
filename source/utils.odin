@@ -2,48 +2,52 @@ package main
 
 import rl "vendor:raylib"
 
-// Pour la mise en place des tuiles.
+Vec2 :: [2]f32
+Vec3 :: [3]f32
+
 Pivot :: enum {
-    top_left,
-    top_center,
-    top_right,
-    center_left,
-    center_center,
-    center_right,
-    bottom_left,
-    bottom_center,
-    bottom_right,
+	top_left,
+	top_center,
+	top_right,
+	center_left,
+	center_center,
+	center_right,
+	bottom_left,
+	bottom_center,
+	bottom_right
 }
 
-get_pivot_offset :: proc(sprite_size: rl.Vector2, pivot: Pivot) -> rl.Vector2 {
-    switch pivot {
-        case .top_left:
-        return {0, 0}
+get_pivot_value :: proc(pivot: Pivot) -> Vec2 {
+	#partial switch pivot {
+		case .top_left:
+		return {0.0, 0.0}
+		
+		case .top_center:
+		return {0.5, 0.0}
 
-        case .top_center:
-        return {sprite_size.x / 2, 0}
+		case .top_right:
+		return {1.0, 0.0}
 
-        case .top_right:
-        return {sprite_size.x, 0}
 
-        case .center_left:
-        return {0, sprite_size.y / 2}
+		case .center_left:
+		return {0.0, 0.5}
 
-        case .center_center:
-        return sprite_size / 2
+		case .center_center:
+		return {0.5, 0.5}
 
-        case .center_right:
-        return {sprite_size.x, sprite_size.y / 2}
+		case .center_right:
+		return {1.0, 0.5}
 
-        case .bottom_left:
-        return {0, sprite_size.y}
 
-        case .bottom_center:
-        return {sprite_size.x / 2, sprite_size.y}
+		case .bottom_left:
+		return {0.0, 1.0}
 
-        case .bottom_right:
-        return sprite_size
-    }
+		case .bottom_center:
+		return {0.5, 1.0}
 
-    return {0, 0}
+		case .bottom_right:
+		return {1.0, 1.0}
+	}
+
+	return {0.0, 0.0}
 }
