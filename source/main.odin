@@ -78,6 +78,7 @@ Entity_type :: enum {
 
 Entity_flags :: enum {
     hovered,
+    has_inventory
 }
 
 Entity :: struct {
@@ -176,7 +177,7 @@ game_create_n_number_of_entity :: proc(game: ^Game, number: u32, en_type: Entity
                 type = en_type,
                 alive = true,
                 health = 20.0, // à changer plus tard
-                flags = {},
+                flags = {.has_inventory},
                 texture = textures_array[.player],
                 rect = {
                     {pos.x, pos.y},
