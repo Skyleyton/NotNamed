@@ -96,7 +96,7 @@ Entity :: struct {
 
 // A REVOIR
 Rect :: struct {
-    pos: Vector2f,
+    using pos: Vector2f,
     width, height: f32,
 }
 
@@ -214,7 +214,7 @@ game_create_n_number_of_entity :: proc(game: ^Game, number: u32, en_type: Entity
                 flags = {},
                 texture = textures_array[.rock0],
                 rect = {
-                    {pos.x, pos.y * 0.5},
+                    {pos.x, pos.y},
                     f32(textures_array[.rock0].width),
                     f32(textures_array[.rock0].height)
                 }
@@ -503,13 +503,20 @@ main :: proc() {
         game_check_tiles_occuped(&game)
 
         for &en in game.entities {
-            en.rect.pos.x = en.pos.x - (f32(en.texture.width) / 2)
+            scaled_width: f32 = f32(en.texture.width) * GAME_SCALE
+            scaled_height: f32 = f32(en.texture.height) * GAME_SCALE
+
+            en.rect.x = en.pos.x - scaled_width / 2.0
+
             if en.type == .tree0 {
-                en.rect.pos.y = en.pos.y - f32(en.texture.height)                
+                en.rect.y = en.pos.y - scaled_height // tree0 is rendered from .bottom_center
             }
             else {
-                en.rect.pos.y = en.pos.y - (f32(en.texture.height) / 2)
+                en.rect.y = en.pos.y - scaled_height / 2.0
             }
+
+            en.rect.width = scaled_width
+            en.rect.height = scaled_height
         }
 
         // Tiles rendering
