@@ -1,4 +1,3 @@
-
 package main
 
 import "core:fmt"
@@ -6,6 +5,7 @@ import "core:fmt"
 import "core:math"
 import "core:math/linalg"
 import "core:math/rand"
+import "core:mem"
 
 import rl "vendor:raylib"
 
@@ -73,12 +73,17 @@ Entity_type :: enum {
     player,
     rock0,
     tree0,
+
+    item_tree0, // When tree0 is destroyed
+    item_small_rock0, // When rock0 is destroyed
+    item_big_rock0, // Sometimes when rock0 is destroyed
     // TOTAL_ENTITY_TYPE,
 }
 
 Entity_flags :: enum {
     hovered,
-    has_inventory
+    has_inventory,
+    is_item
 }
 
 Entity :: struct {
@@ -92,6 +97,9 @@ Entity :: struct {
     texture: rl.Texture2D,
     flags: bit_set[Entity_flags],
     pos_origin: rl.Vector2, // Pour des animations lorsqu'on casse des textures.
+
+    // items
+    number_of_item: u32
 }
 
 // A REVOIR
@@ -231,6 +239,80 @@ game_create_n_number_of_entity :: proc(game: ^Game, number: u32, en_type: Entity
     return true
 }
 
+
+game_create_n_number_of_entity_items :: proc(game: ^Game, number: u32, en_type: Entity_type, from_entity: Entity) -> bool {
+    if (game.current_entity_number + number) >= MAX_ENTITY {
+        fmt.println("! Impossible de rajouter ce nombre d'entités !")
+
+        return false
+    }
+
+    textures_array: [Texture_type]rl.Texture
+
+    for i in game.current_entity_number..<(number+game.current_entity_number) {
+        #partial switch en_type {
+            // On mets tout au hasard, on changera plus tard.
+            case .player:
+            pos: rl.Vector2 = {rand.float32_range(0.0, f32(NUM_TILES_X * (TILE_LENGTH-1))), rand.float32_range(0.0, f32(NUM_TILES_Y * (TILE_LENGTH-1)))} // Random pos in the game world.
+            game.entities[i] = Entity {
+                pos = pos,
+                vel = {0.0, 0.0},
+                type = en_type,
+                alive = true,
+                health = 20.0, // à changer plus tard
+                flags = {.has_inventory},
+                texture = textures_array[.player],
+                rect = {
+                    {pos.x, pos.y},
+                    f32(textures_array[.player].width),
+                    f32(textures_array[.player].height)
+                }
+            }
+
+            case .tree0:
+            pos: rl.Vector2 = {rand.float32_range(0.0, f32(NUM_TILES_X * (TILE_LENGTH-1))), rand.float32_range(0.0, f32(NUM_TILES_Y * (TILE_LENGTH-1)))} // Random pos in the game world.
+            game.entities[i] = Entity {
+                pos = pos,
+                vel = {0.0, 0.0},
+                type = en_type,
+                alive = true,
+                health = 20.0, // à changer plus tard
+                flags = {},
+                texture = textures_array[.tree0],
+                rect = {
+                    {pos.x, pos.y},
+                    f32(textures_array[.tree0].width),
+                    f32(textures_array[.tree0].height)
+                }         
+            }
+
+            case .rock0:
+            pos: rl.Vector2 = {rand.float32_range(0.0, f32(NUM_TILES_X * (TILE_LENGTH-1))), rand.float32_range(0.0, f32(NUM_TILES_Y * (TILE_LENGTH-1)))} // Random pos in the game world.
+            game.entities[i] = Entity {
+                pos = pos,
+                vel = {0.0, 0.0},
+                type = en_type,
+                alive = true,
+                health = 20.0,
+                flags = {},
+                texture = textures_array[.rock0],
+                rect = {
+                    {pos.x, pos.y},
+                    f32(textures_array[.rock0].width),
+                    f32(textures_array[.rock0].height)
+                }
+            }
+        }
+        // On pose ça là, comme ça l'entité est créée.
+        game.entities[i].tile_pos = {int(game.entities[i].pos.x) / TILE_LENGTH, int(game.entities[i].pos.y) / TILE_LENGTH}
+        game.entities[i].pos_origin = game.entities[i].pos
+    }
+
+    // On rajoute le nombre d'entités ajoutés.
+    game.current_entity_number += number
+
+    return true
+}
 // WORKING
 game_put_entity_to_tiles :: proc(game: ^Game) {
     for &en in game.entities {
@@ -326,19 +408,6 @@ game_ui_show_entity_type_below_mouse :: proc(game: ^Game, en: ^Entity) {
 
         rl.DrawRectangle((WINDOW_W / 2) - 30, (75 / 2) - 5, 105, 40, rl.GRAY)
         rl.DrawText(text, (WINDOW_W / 2) - 25, 75 / 2, text_font_size, rl.BLACK)
-    }
-}
-
-// WORKING
-game_check_entity_alive :: proc(game: ^Game) {
-    for i in 0..<game.current_entity_number {
-        if game.entities[i].health <= 0.0 {
-            // index: int = game.entities[i].tile_pos.x * NUM_TILES_Y + game.entities[i].tile_pos.y
-            // game.tiles[index].flags -= { .occuped }
-            game.entities[i] = {} // L'entité devient inexistante
-            // game.entities[i].alive = false // On mets ça après
-            // game.current_entity_number -= 1 // On enlève l'entité du monde
-        }
     }
 }
 
@@ -463,13 +532,22 @@ main :: proc() {
         if rl.IsMouseButtonPressed(.LEFT) {
             // On gère le cas où il n'y a pas d'entité sous la souris, sinon ça cause un crash.
             if entity_below_mouse != nil && entity_below_mouse.type != .player {
-                fmt.println("click")
                 entity_below_mouse.health -= 5.0
+                if entity_below_mouse.health <= 0.0 {
+                    // Create new entity based from the entity destroyed
+                    #partial switch entity_below_mouse.type {
+                        case .tree0:
+                        game_create_n_number_of_entity(&game, 1, .item_tree0)
+                    }
+                    
+                    mem.set(entity_below_mouse, 0, size_of(Entity)) // On erase l'entity comme ça pour l'instant
+                }
             }
         }
         else if rl.IsMouseButtonPressed(.RIGHT) {
             if entity_below_mouse != nil {
                 fmt.println(entity_below_mouse.health)
+                fmt.println(entity_below_mouse.alive)
             }
         }
 
@@ -499,9 +577,9 @@ main :: proc() {
 
         animate_vector2_to_target(&player_camera.target, player_pointer.pos, dt, 20.0) // Anime la caméra vers le joueur
 
-        game_check_entity_alive(&game)
         game_check_tiles_occuped(&game)
 
+        // Rect setting
         for &en in game.entities {
             scaled_width: f32 = f32(en.texture.width) * GAME_SCALE
             scaled_height: f32 = f32(en.texture.height) * GAME_SCALE
