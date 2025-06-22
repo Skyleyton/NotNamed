@@ -2,8 +2,11 @@ package main
 
 import rl "vendor:raylib"
 
-Vec2 :: [2]f32
-Vec3 :: [3]f32
+Vec2f :: [2]f32
+Vec2i :: [2]int
+
+Vec3f :: [3]f32
+Vec3i :: [3]int
 
 Pivot :: enum {
 	top_left,
@@ -17,7 +20,7 @@ Pivot :: enum {
 	bottom_right
 }
 
-get_pivot_value :: proc(pivot: Pivot) -> Vec2 {
+get_pivot_value :: proc(pivot: Pivot) -> Vec2f {
 	#partial switch pivot {
 		case .top_left:
 		return {0.0, 0.0}

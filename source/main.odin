@@ -1,4 +1,3 @@
-
 package main
 
 import "core:fmt"
@@ -6,6 +5,7 @@ import "core:fmt"
 import "core:math"
 import "core:math/linalg"
 import "core:math/rand"
+import "core:mem"
 
 import rl "vendor:raylib"
 
@@ -40,15 +40,13 @@ DONE:
 
 WINDOW_W: i32 : 1280
 WINDOW_H: i32 : 720
-Vector2i :: [2]int
-Vector2f :: [2]f32
 
 // Distance de frappe
 MAX_DIST :: 1
 
 // Le nombre de tiles dans le monde pour l'instant.
-NUM_TILES_X :: 20
-NUM_TILES_Y :: 20
+NUM_TILES_X :: 32
+NUM_TILES_Y :: 32
 
 // La taille d'une tile en pixels.
 GAME_SCALE :: 1
@@ -65,6 +63,11 @@ Texture_type :: enum {
     player,
     rock0,
     tree0,
+
+    // Items
+    wood,
+    small_rock,
+    big_rock,    
     // TOTAL_TEXTURE_TYPE,
 }
 
@@ -73,17 +76,30 @@ Entity_type :: enum {
     player,
     rock0,
     tree0,
+
+    item, // When something is an item
     // TOTAL_ENTITY_TYPE,
+}
+
+Item_Type :: enum {
+    item_wood,
+    item_small_rock,
+    item_big_rock
+}
+
+Item :: struct {
+    type: Item_Type,
+    count: u32
 }
 
 Entity_flags :: enum {
     hovered,
-    has_inventory
+    has_inventory,
 }
 
 Entity :: struct {
     pos: rl.Vector2,
-    tile_pos: Vector2i,
+    tile_pos: Vec2i,
     vel: rl.Vector2,
     type: Entity_type,
     health: f32,
@@ -92,11 +108,14 @@ Entity :: struct {
     texture: rl.Texture2D,
     flags: bit_set[Entity_flags],
     pos_origin: rl.Vector2, // Pour des animations lorsqu'on casse des textures.
+
+    // items
+    item: Item
 }
 
 // A REVOIR
 Rect :: struct {
-    using pos: Vector2f,
+    using pos: Vec2f,
     width, height: f32,
 }
 
@@ -137,7 +156,7 @@ textures: [Texture_type]rl.Texture // Détecte tout seul le nombre max d'éléme
 game: Game
 
 // Dessine une texture avec son origine à son centre
-draw_sprite :: proc(texture: rl.Texture, pos: Vec2, rotation:f32=0, scale:f32=1, pivot:Pivot=.center_center, tint:=rl.WHITE) {
+draw_sprite :: proc(texture: rl.Texture, pos: Vec2f, rotation:f32=0, scale:f32=1, pivot:Pivot=.center_center, tint:=rl.WHITE) {
     pivot := get_pivot_value(pivot)
     
     rl.DrawTexturePro(texture,
@@ -231,6 +250,48 @@ game_create_n_number_of_entity :: proc(game: ^Game, number: u32, en_type: Entity
     return true
 }
 
+
+game_create_n_number_of_item_from_entity :: proc(game: ^Game, number: u32, item_type: Item_Type, from_entity: Entity) -> bool {
+    if (game.current_entity_number + number) >= MAX_ENTITY {
+        fmt.println("! Impossible de rajouter ce nombre d'entités !")
+
+        return false
+    }
+
+    textures_array: [Texture_type]rl.Texture
+    textures_array[.wood] = rl.LoadTexture("assets/images/item_tree0.png")
+    textures_array[.small_rock] = rl.LoadTexture("assets/images/item_small_rock0.png")
+
+    for i in game.current_entity_number..<(number+game.current_entity_number) {
+        #partial switch item_type {
+            case .item_wood:
+            game.entities[i] = Entity {
+                pos = from_entity.pos,
+                vel = {0.0, 0.0},
+                type = .item,
+                item = {
+                    type = item_type,
+                    count = number
+                },
+                alive = true,
+                texture = textures_array[.wood],
+                rect = {
+                    {from_entity.pos.x, from_entity.pos.y},
+                    f32(textures_array[.wood].width),
+                    f32(textures_array[.wood].height)
+                }
+            }
+        }
+        // On pose ça là, comme ça l'entité est créée.
+        game.entities[i].tile_pos = {int(game.entities[i].pos.x) / TILE_LENGTH, int(game.entities[i].pos.y) / TILE_LENGTH}
+        game.entities[i].pos_origin = game.entities[i].pos
+    }
+
+    // On rajoute le nombre d'entités ajoutés.
+    game.current_entity_number += number
+
+    return true
+}
 // WORKING
 game_put_entity_to_tiles :: proc(game: ^Game) {
     for &en in game.entities {
@@ -286,7 +347,7 @@ game_check_tiles_occuped :: proc(game: ^Game) {
 }
 
 // WORKING
-game_get_entity_below_mouse :: proc(game: ^Game, mouse_tile_pos: Vector2i) -> ^Entity {
+game_get_entity_below_mouse :: proc(game: ^Game, mouse_tile_pos: Vec2i) -> ^Entity {
     for i in 0..<game.current_entity_number {
         if game.entities[i].tile_pos == mouse_tile_pos {
             game.entities[i].flags += {.hovered}
@@ -298,7 +359,7 @@ game_get_entity_below_mouse :: proc(game: ^Game, mouse_tile_pos: Vector2i) -> ^E
     return nil
 }
 
-game_get_entity_below_mouse_aabb :: proc(game: ^Game, mouse_pos: Vector2f) -> ^Entity {
+game_get_entity_below_mouse_aabb :: proc(game: ^Game, mouse_pos: Vec2f) -> ^Entity {
     for i in 0..<game.current_entity_number {
         if rect_contains(game.entities[i].rect, mouse_pos) {
             game.entities[i].flags += {.hovered}
@@ -311,7 +372,7 @@ game_get_entity_below_mouse_aabb :: proc(game: ^Game, mouse_pos: Vector2f) -> ^E
 }
 
 // WORKING
-game_is_entity_below_mouse :: proc(game: ^Game, mouse_tile_pos: Vector2i, en: Entity) -> bool {
+game_is_entity_below_mouse :: proc(game: ^Game, mouse_tile_pos: Vec2i, en: Entity) -> bool {
     if mouse_tile_pos == en.tile_pos {
         return true
     }
@@ -330,19 +391,6 @@ game_ui_show_entity_type_below_mouse :: proc(game: ^Game, en: ^Entity) {
 }
 
 // WORKING
-game_check_entity_alive :: proc(game: ^Game) {
-    for i in 0..<game.current_entity_number {
-        if game.entities[i].health <= 0.0 {
-            // index: int = game.entities[i].tile_pos.x * NUM_TILES_Y + game.entities[i].tile_pos.y
-            // game.tiles[index].flags -= { .occuped }
-            game.entities[i] = {} // L'entité devient inexistante
-            // game.entities[i].alive = false // On mets ça après
-            // game.current_entity_number -= 1 // On enlève l'entité du monde
-        }
-    }
-}
-
-// WORKING
 ui_show_fps :: proc(color: rl.Color) {
     text_fps: cstring = fmt.ctprint("FPS: ", rl.GetFPS())
     text_font_size: i32 = 32
@@ -357,8 +405,8 @@ game_get_world_pos :: proc(position: rl.Vector2, camera2D: rl.Camera2D) -> rl.Ve
 }
 
 // WORKING
-game_get_tile_from_world_pos :: proc(position: rl.Vector2, camera2D: rl.Camera2D) -> Vector2i {
-    tile_pos: Vector2i
+game_get_tile_from_world_pos :: proc(position: rl.Vector2, camera2D: rl.Camera2D) -> Vec2i {
+    tile_pos: Vec2i
     tile_pos.x = int(math.floor(game_get_world_pos(position, camera2D).x) / TILE_LENGTH) * GAME_SCALE
     tile_pos.y = int(math.floor(game_get_world_pos(position, camera2D).y) / TILE_LENGTH) * GAME_SCALE
 
@@ -462,14 +510,23 @@ main :: proc() {
         // Player mouse
         if rl.IsMouseButtonPressed(.LEFT) {
             // On gère le cas où il n'y a pas d'entité sous la souris, sinon ça cause un crash.
-            if entity_below_mouse != nil && entity_below_mouse.type != .player {
-                fmt.println("click")
+            if entity_below_mouse != nil && entity_below_mouse.type != .player && entity_below_mouse.type != .item {
                 entity_below_mouse.health -= 5.0
+                if entity_below_mouse.health <= 0.0 {
+                    // Create new entity based on the entity destroyed
+                    #partial switch entity_below_mouse.type {
+                        case .tree0:
+                        // game.current_entity_number -= 1
+                        game_create_n_number_of_item_from_entity (&game, 1, .item_wood, entity_below_mouse^)
+                    }
+                    mem.set(entity_below_mouse, 0, size_of(Entity)) // On erase l'entity comme ça pour l'instant
+                }
             }
         }
         else if rl.IsMouseButtonPressed(.RIGHT) {
             if entity_below_mouse != nil {
                 fmt.println(entity_below_mouse.health)
+                fmt.println(entity_below_mouse.alive)
             }
         }
 
@@ -499,9 +556,9 @@ main :: proc() {
 
         animate_vector2_to_target(&player_camera.target, player_pointer.pos, dt, 20.0) // Anime la caméra vers le joueur
 
-        game_check_entity_alive(&game)
         game_check_tiles_occuped(&game)
 
+        // Rect setting
         for &en in game.entities {
             scaled_width: f32 = f32(en.texture.width) * GAME_SCALE
             scaled_height: f32 = f32(en.texture.height) * GAME_SCALE
@@ -579,6 +636,9 @@ main :: proc() {
                         when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.rect.pos.x), i32(en.rect.pos.y), i32(en.texture.width), i32(en.texture.height), rl.RED)
                         // when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.pos.x) - i32(en.texture.width / 2), i32(en.pos.y) - i32(en.texture.height / 2), i32(en.texture.width), i32(en.texture.height), rl.RED)
                     }
+
+                case .item:
+                    draw_sprite(en.texture, {en.pos.x, en.pos.y}, rotation=0, scale=GAME_SCALE)
             }
         }
 
