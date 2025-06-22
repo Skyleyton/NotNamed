@@ -172,7 +172,7 @@ draw_sprite :: proc(texture: rl.Texture, pos: Vec2f, rotation:f32=0, scale:f32=1
 // Retourne true si réussi, sinon false.
 // WORKING
 game_create_n_number_of_entity :: proc(game: ^Game, number: u32, en_type: Entity_type) -> bool {
-    if (game.current_entity_number + number) >= MAX_ENTITY {
+    if (game.current_entity_number + number) > MAX_ENTITY {
         fmt.println("! Impossible de rajouter ce nombre d'entités !")
 
         return false
@@ -251,8 +251,8 @@ game_create_n_number_of_entity :: proc(game: ^Game, number: u32, en_type: Entity
 }
 
 
-game_create_n_number_of_item_from_entity :: proc(game: ^Game, number: u32, item_type: Item_Type, from_entity: Entity) -> bool {
-    if (game.current_entity_number + number) >= MAX_ENTITY {
+game_create_n_number_of_item_from_entity :: proc(game: ^Game, number: u32, number_of_items: u32, item_type: Item_Type, from_entity: Entity) -> bool {
+    if (game.current_entity_number + number) > MAX_ENTITY {
         fmt.println("! Impossible de rajouter ce nombre d'entités !")
 
         return false
@@ -271,7 +271,7 @@ game_create_n_number_of_item_from_entity :: proc(game: ^Game, number: u32, item_
                 type = .item,
                 item = {
                     type = item_type,
-                    count = number
+                    count = number_of_items
                 },
                 alive = true,
                 texture = textures_array[.wood],
@@ -279,6 +279,24 @@ game_create_n_number_of_item_from_entity :: proc(game: ^Game, number: u32, item_
                     {from_entity.pos.x, from_entity.pos.y},
                     f32(textures_array[.wood].width),
                     f32(textures_array[.wood].height)
+                }
+            }
+            
+            case .item_small_rock:
+            game.entities[i] = Entity {
+                pos = from_entity.pos,
+                vel = {0.0, 0.0},
+                type = .item,
+                item = {
+                    type = item_type,
+                    count = number_of_items
+                },
+                alive = true,
+                texture = textures_array[.small_rock],
+                rect = {
+                    {from_entity.pos.x, from_entity.pos.y},
+                    f32(textures_array[.small_rock].width),
+                    f32(textures_array[.small_rock].height)
                 }
             }
         }
@@ -348,24 +366,24 @@ game_check_tiles_occuped :: proc(game: ^Game) {
 
 // WORKING
 game_get_entity_below_mouse :: proc(game: ^Game, mouse_tile_pos: Vec2i) -> ^Entity {
-    for i in 0..<game.current_entity_number {
-        if game.entities[i].tile_pos == mouse_tile_pos {
-            game.entities[i].flags += {.hovered}
-            return &game.entities[i]
+    for &en in game.entities {
+        if en.tile_pos == mouse_tile_pos {
+            en.flags += {.hovered}
+            return &en
         }
-        game.entities[i].flags -= {.hovered}
+        en.flags -= {.hovered}
     }
 
     return nil
 }
 
 game_get_entity_below_mouse_aabb :: proc(game: ^Game, mouse_pos: Vec2f) -> ^Entity {
-    for i in 0..<game.current_entity_number {
-        if rect_contains(game.entities[i].rect, mouse_pos) {
-            game.entities[i].flags += {.hovered}
-            return &game.entities[i]
+    for &en in game.entities {
+        if rect_contains(en.rect, mouse_pos) {
+            en.flags += {.hovered}
+            return &en
         }
-        game.entities[i].flags -= {.hovered}
+        en.flags -= {.hovered}
     }
 
     return nil
@@ -516,9 +534,12 @@ main :: proc() {
                     // Create new entity based on the entity destroyed
                     #partial switch entity_below_mouse.type {
                         case .tree0:
-                        // game.current_entity_number -= 1
-                        game_create_n_number_of_item_from_entity (&game, 1, .item_wood, entity_below_mouse^)
+                        game_create_n_number_of_item_from_entity (&game, 1, 1, .item_wood, entity_below_mouse^)
+
+                        case .rock0:
+                        game_create_n_number_of_item_from_entity(&game, 1, 1, .item_small_rock, entity_below_mouse^)
                     }
+                    game.current_entity_number -= 1
                     mem.set(entity_below_mouse, 0, size_of(Entity)) // On erase l'entity comme ça pour l'instant
                 }
             }
@@ -560,20 +581,22 @@ main :: proc() {
 
         // Rect setting
         for &en in game.entities {
-            scaled_width: f32 = f32(en.texture.width) * GAME_SCALE
-            scaled_height: f32 = f32(en.texture.height) * GAME_SCALE
+            if en.alive {
+                scaled_width: f32 = f32(en.texture.width) * GAME_SCALE
+                scaled_height: f32 = f32(en.texture.height) * GAME_SCALE
 
-            en.rect.x = en.pos.x - scaled_width / 2.0
+                en.rect.x = en.pos.x - scaled_width / 2.0
 
-            if en.type == .tree0 {
-                en.rect.y = en.pos.y - scaled_height // tree0 is rendered from .bottom_center
+                if en.type == .tree0 {
+                    en.rect.y = en.pos.y - scaled_height // tree0 is rendered from .bottom_center
+                }
+                else {
+                    en.rect.y = en.pos.y - scaled_height / 2.0
+                }
+
+                en.rect.width = scaled_width
+                en.rect.height = scaled_height
             }
-            else {
-                en.rect.y = en.pos.y - scaled_height / 2.0
-            }
-
-            en.rect.width = scaled_width
-            en.rect.height = scaled_height
         }
 
         // Tiles rendering
@@ -600,8 +623,7 @@ main :: proc() {
         }
 
         // Entities rendering
-        for i in 0..<game.current_entity_number {
-            en := game.entities[i]
+        for &en in game.entities {
             if !en.alive { // On skip si l'entité n'est plus là, pas besoin de la render.
                 continue
             }
