@@ -1,6 +1,6 @@
 package main
 
-import rl "vendor:raylib"
+import "core:math"
 
 Vec2f :: [2]f32
 Vec2i :: [2]int
@@ -53,4 +53,8 @@ get_pivot_value :: proc(pivot: Pivot) -> Vec2f {
 	}
 
 	return {0.0, 0.0}
+}
+
+sin_breath :: proc(time: f32, rate: f32) -> f32 {
+	return math.sin(time * 2.0) * rate
 }
