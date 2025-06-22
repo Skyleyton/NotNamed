@@ -40,15 +40,13 @@ DONE:
 
 WINDOW_W: i32 : 1280
 WINDOW_H: i32 : 720
-Vector2i :: [2]int
-Vector2f :: [2]f32
 
 // Distance de frappe
 MAX_DIST :: 1
 
 // Le nombre de tiles dans le monde pour l'instant.
-NUM_TILES_X :: 20
-NUM_TILES_Y :: 20
+NUM_TILES_X :: 32
+NUM_TILES_Y :: 32
 
 // La taille d'une tile en pixels.
 GAME_SCALE :: 1
@@ -65,6 +63,11 @@ Texture_type :: enum {
     player,
     rock0,
     tree0,
+
+    // Items
+    wood,
+    small_rock,
+    big_rock,    
     // TOTAL_TEXTURE_TYPE,
 }
 
@@ -74,21 +77,29 @@ Entity_type :: enum {
     rock0,
     tree0,
 
-    item_tree0, // When tree0 is destroyed
-    item_small_rock0, // When rock0 is destroyed
-    item_big_rock0, // Sometimes when rock0 is destroyed
+    item, // When something is an item
     // TOTAL_ENTITY_TYPE,
+}
+
+Item_Type :: enum {
+    item_wood,
+    item_small_rock,
+    item_big_rock
+}
+
+Item :: struct {
+    type: Item_Type,
+    count: u32
 }
 
 Entity_flags :: enum {
     hovered,
     has_inventory,
-    is_item
 }
 
 Entity :: struct {
     pos: rl.Vector2,
-    tile_pos: Vector2i,
+    tile_pos: Vec2i,
     vel: rl.Vector2,
     type: Entity_type,
     health: f32,
@@ -99,12 +110,12 @@ Entity :: struct {
     pos_origin: rl.Vector2, // Pour des animations lorsqu'on casse des textures.
 
     // items
-    number_of_item: u32
+    item: Item
 }
 
 // A REVOIR
 Rect :: struct {
-    using pos: Vector2f,
+    using pos: Vec2f,
     width, height: f32,
 }
 
@@ -145,7 +156,7 @@ textures: [Texture_type]rl.Texture // Détecte tout seul le nombre max d'éléme
 game: Game
 
 // Dessine une texture avec son origine à son centre
-draw_sprite :: proc(texture: rl.Texture, pos: Vec2, rotation:f32=0, scale:f32=1, pivot:Pivot=.center_center, tint:=rl.WHITE) {
+draw_sprite :: proc(texture: rl.Texture, pos: Vec2f, rotation:f32=0, scale:f32=1, pivot:Pivot=.center_center, tint:=rl.WHITE) {
     pivot := get_pivot_value(pivot)
     
     rl.DrawTexturePro(texture,
@@ -240,7 +251,7 @@ game_create_n_number_of_entity :: proc(game: ^Game, number: u32, en_type: Entity
 }
 
 
-game_create_n_number_of_entity_items :: proc(game: ^Game, number: u32, en_type: Entity_type, from_entity: Entity) -> bool {
+game_create_n_number_of_item_from_entity :: proc(game: ^Game, number: u32, item_type: Item_Type, from_entity: Entity) -> bool {
     if (game.current_entity_number + number) >= MAX_ENTITY {
         fmt.println("! Impossible de rajouter ce nombre d'entités !")
 
@@ -248,58 +259,26 @@ game_create_n_number_of_entity_items :: proc(game: ^Game, number: u32, en_type: 
     }
 
     textures_array: [Texture_type]rl.Texture
+    textures_array[.wood] = rl.LoadTexture("assets/images/item_tree0.png")
+    textures_array[.small_rock] = rl.LoadTexture("assets/images/item_small_rock0.png")
 
     for i in game.current_entity_number..<(number+game.current_entity_number) {
-        #partial switch en_type {
-            // On mets tout au hasard, on changera plus tard.
-            case .player:
-            pos: rl.Vector2 = {rand.float32_range(0.0, f32(NUM_TILES_X * (TILE_LENGTH-1))), rand.float32_range(0.0, f32(NUM_TILES_Y * (TILE_LENGTH-1)))} // Random pos in the game world.
+        #partial switch item_type {
+            case .item_wood:
             game.entities[i] = Entity {
-                pos = pos,
+                pos = from_entity.pos,
                 vel = {0.0, 0.0},
-                type = en_type,
+                type = .item,
+                item = {
+                    type = item_type,
+                    count = number
+                },
                 alive = true,
-                health = 20.0, // à changer plus tard
-                flags = {.has_inventory},
-                texture = textures_array[.player],
+                texture = textures_array[.wood],
                 rect = {
-                    {pos.x, pos.y},
-                    f32(textures_array[.player].width),
-                    f32(textures_array[.player].height)
-                }
-            }
-
-            case .tree0:
-            pos: rl.Vector2 = {rand.float32_range(0.0, f32(NUM_TILES_X * (TILE_LENGTH-1))), rand.float32_range(0.0, f32(NUM_TILES_Y * (TILE_LENGTH-1)))} // Random pos in the game world.
-            game.entities[i] = Entity {
-                pos = pos,
-                vel = {0.0, 0.0},
-                type = en_type,
-                alive = true,
-                health = 20.0, // à changer plus tard
-                flags = {},
-                texture = textures_array[.tree0],
-                rect = {
-                    {pos.x, pos.y},
-                    f32(textures_array[.tree0].width),
-                    f32(textures_array[.tree0].height)
-                }         
-            }
-
-            case .rock0:
-            pos: rl.Vector2 = {rand.float32_range(0.0, f32(NUM_TILES_X * (TILE_LENGTH-1))), rand.float32_range(0.0, f32(NUM_TILES_Y * (TILE_LENGTH-1)))} // Random pos in the game world.
-            game.entities[i] = Entity {
-                pos = pos,
-                vel = {0.0, 0.0},
-                type = en_type,
-                alive = true,
-                health = 20.0,
-                flags = {},
-                texture = textures_array[.rock0],
-                rect = {
-                    {pos.x, pos.y},
-                    f32(textures_array[.rock0].width),
-                    f32(textures_array[.rock0].height)
+                    {from_entity.pos.x, from_entity.pos.y},
+                    f32(textures_array[.wood].width),
+                    f32(textures_array[.wood].height)
                 }
             }
         }
@@ -368,7 +347,7 @@ game_check_tiles_occuped :: proc(game: ^Game) {
 }
 
 // WORKING
-game_get_entity_below_mouse :: proc(game: ^Game, mouse_tile_pos: Vector2i) -> ^Entity {
+game_get_entity_below_mouse :: proc(game: ^Game, mouse_tile_pos: Vec2i) -> ^Entity {
     for i in 0..<game.current_entity_number {
         if game.entities[i].tile_pos == mouse_tile_pos {
             game.entities[i].flags += {.hovered}
@@ -380,7 +359,7 @@ game_get_entity_below_mouse :: proc(game: ^Game, mouse_tile_pos: Vector2i) -> ^E
     return nil
 }
 
-game_get_entity_below_mouse_aabb :: proc(game: ^Game, mouse_pos: Vector2f) -> ^Entity {
+game_get_entity_below_mouse_aabb :: proc(game: ^Game, mouse_pos: Vec2f) -> ^Entity {
     for i in 0..<game.current_entity_number {
         if rect_contains(game.entities[i].rect, mouse_pos) {
             game.entities[i].flags += {.hovered}
@@ -393,7 +372,7 @@ game_get_entity_below_mouse_aabb :: proc(game: ^Game, mouse_pos: Vector2f) -> ^E
 }
 
 // WORKING
-game_is_entity_below_mouse :: proc(game: ^Game, mouse_tile_pos: Vector2i, en: Entity) -> bool {
+game_is_entity_below_mouse :: proc(game: ^Game, mouse_tile_pos: Vec2i, en: Entity) -> bool {
     if mouse_tile_pos == en.tile_pos {
         return true
     }
@@ -426,8 +405,8 @@ game_get_world_pos :: proc(position: rl.Vector2, camera2D: rl.Camera2D) -> rl.Ve
 }
 
 // WORKING
-game_get_tile_from_world_pos :: proc(position: rl.Vector2, camera2D: rl.Camera2D) -> Vector2i {
-    tile_pos: Vector2i
+game_get_tile_from_world_pos :: proc(position: rl.Vector2, camera2D: rl.Camera2D) -> Vec2i {
+    tile_pos: Vec2i
     tile_pos.x = int(math.floor(game_get_world_pos(position, camera2D).x) / TILE_LENGTH) * GAME_SCALE
     tile_pos.y = int(math.floor(game_get_world_pos(position, camera2D).y) / TILE_LENGTH) * GAME_SCALE
 
@@ -531,15 +510,15 @@ main :: proc() {
         // Player mouse
         if rl.IsMouseButtonPressed(.LEFT) {
             // On gère le cas où il n'y a pas d'entité sous la souris, sinon ça cause un crash.
-            if entity_below_mouse != nil && entity_below_mouse.type != .player {
+            if entity_below_mouse != nil && entity_below_mouse.type != .player && entity_below_mouse.type != .item {
                 entity_below_mouse.health -= 5.0
                 if entity_below_mouse.health <= 0.0 {
-                    // Create new entity based from the entity destroyed
+                    // Create new entity based on the entity destroyed
                     #partial switch entity_below_mouse.type {
                         case .tree0:
-                        game_create_n_number_of_entity(&game, 1, .item_tree0)
+                        // game.current_entity_number -= 1
+                        game_create_n_number_of_item_from_entity (&game, 1, .item_wood, entity_below_mouse^)
                     }
-                    
                     mem.set(entity_below_mouse, 0, size_of(Entity)) // On erase l'entity comme ça pour l'instant
                 }
             }
@@ -657,6 +636,9 @@ main :: proc() {
                         when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.rect.pos.x), i32(en.rect.pos.y), i32(en.texture.width), i32(en.texture.height), rl.RED)
                         // when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.pos.x) - i32(en.texture.width / 2), i32(en.pos.y) - i32(en.texture.height / 2), i32(en.texture.width), i32(en.texture.height), rl.RED)
                     }
+
+                case .item:
+                    draw_sprite(en.texture, {en.pos.x, en.pos.y}, rotation=0, scale=GAME_SCALE)
             }
         }
 
