@@ -89,13 +89,17 @@ Item_Type :: enum {
 
 Item :: struct {
     type: Item_Type,
-    count: u32
+    count: u32,
+    max_stack: u32
 }
 
 Entity_flags :: enum {
     hovered,
     has_inventory,
+    in_inventory,
 }
+
+MAX_ITEMS :: 10 // Le nombre max d'items que peux avoir une entité.
 
 Entity :: struct {
     pos: rl.Vector2,
@@ -110,7 +114,8 @@ Entity :: struct {
     pos_origin: rl.Vector2, // Pour des animations lorsqu'on casse des textures.
 
     // items
-    item: Item
+    item: Item,
+    inventory: [dynamic]Entity // Seulement pour les entités vivantes.
 }
 
 // A REVOIR
@@ -553,10 +558,12 @@ main :: proc() {
             }
         }
         else if rl.IsMouseButtonPressed(.RIGHT) {
-            if entity_below_mouse != nil {
-                fmt.println(entity_below_mouse.health)
-                fmt.println(entity_below_mouse.alive)
+            if entity_below_mouse != nil && entity_below_mouse.type == .item {
+                entity_below_mouse.flags += {.in_inventory} // On rajoute l'entité dans l'inventaire.
+                append(&player_pointer.inventory, entity_below_mouse^)
+                // On doit faire en sorte que la tile ne soit plus occupé maintenant.
             }
+            fmt.println(player_pointer.inventory)
         }
 
         // Player deplacement
@@ -668,8 +675,10 @@ main :: proc() {
                     }
 
                 case .item:
-                    offset_y := sin_breath(f32(rl.GetTime()), 10.0)
-                    draw_sprite(en.texture, {en.pos.x, en.pos.y + offset_y}, rotation=0, scale=GAME_SCALE)
+                    if .in_inventory not_in en.flags {
+                        offset_y := sin_breath(f32(rl.GetTime()), 10.0)
+                        draw_sprite(en.texture, {en.pos.x, en.pos.y + offset_y}, rotation=0, scale=GAME_SCALE)
+                    }
             }
         }
 
@@ -678,6 +687,5 @@ main :: proc() {
         // Infos rendering
         game_ui_show_entity_type_below_mouse(&game, entity_below_mouse) // On mets ça en dehors pour que ça se base sur l'écran, et non par rapport à la caméra.
         ui_show_fps(rl.WHITE)
-        fmt.println(game.current_entity_number)
     }
 }
