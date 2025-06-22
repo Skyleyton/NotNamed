@@ -539,8 +539,16 @@ main :: proc() {
                         case .rock0:
                         game_create_n_number_of_item_from_entity(&game, 1, 1, .item_small_rock, entity_below_mouse^)
                     }
-                    game.current_entity_number -= 1
+                    // Bugs à corriger.
+                    for i in 0..<game.current_entity_number {
+                        last_index := game.current_entity_number - 1
+                        last_entity := game.entities[last_index]
+                        if !game.entities[i].alive {
+                            game.entities[i] = last_entity
+                        }
+                    }
                     mem.set(entity_below_mouse, 0, size_of(Entity)) // On erase l'entity comme ça pour l'instant
+                    game.current_entity_number -= 1
                 }
             }
         }
@@ -660,7 +668,8 @@ main :: proc() {
                     }
 
                 case .item:
-                    draw_sprite(en.texture, {en.pos.x, en.pos.y}, rotation=0, scale=GAME_SCALE)
+                    offset_y := sin_breath(f32(rl.GetTime()), 10.0)
+                    draw_sprite(en.texture, {en.pos.x, en.pos.y + offset_y}, rotation=0, scale=GAME_SCALE)
             }
         }
 
@@ -669,5 +678,6 @@ main :: proc() {
         // Infos rendering
         game_ui_show_entity_type_below_mouse(&game, entity_below_mouse) // On mets ça en dehors pour que ça se base sur l'écran, et non par rapport à la caméra.
         ui_show_fps(rl.WHITE)
+        fmt.println(game.current_entity_number)
     }
 }
