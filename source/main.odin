@@ -564,7 +564,7 @@ main :: proc() {
         // Add item to inventory
         for &en in game.entities {
             if en.type == .item {
-                if linalg.distance(player_pointer.pos, en.pos) <= 20.0 {
+                if linalg.distance(player_pointer.pos, en.pos) <= 30.0 {
                     en.flags += {.in_inventory} // On rajoute l'entité dans l'inventaire.
                     append(&player_pointer.inventory, en)
 
