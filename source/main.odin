@@ -267,6 +267,8 @@ game_create_n_number_of_item_from_entity :: proc(game: ^Game, number: u32, numbe
     textures_array[.wood] = rl.LoadTexture("assets/images/item_tree0.png")
     textures_array[.small_rock] = rl.LoadTexture("assets/images/item_small_rock0.png")
 
+    item_max_stack :: 32
+
     for i in game.current_entity_number..<(number+game.current_entity_number) {
         #partial switch item_type {
             case .item_wood:
@@ -276,7 +278,8 @@ game_create_n_number_of_item_from_entity :: proc(game: ^Game, number: u32, numbe
                 type = .item,
                 item = {
                     type = item_type,
-                    count = number_of_items
+                    count = number_of_items,
+                    max_stack = item_max_stack
                 },
                 alive = true,
                 texture = textures_array[.wood],
@@ -294,7 +297,8 @@ game_create_n_number_of_item_from_entity :: proc(game: ^Game, number: u32, numbe
                 type = .item,
                 item = {
                     type = item_type,
-                    count = number_of_items
+                    count = number_of_items,
+                    max_stack = item_max_stack
                 },
                 alive = true,
                 texture = textures_array[.small_rock],
