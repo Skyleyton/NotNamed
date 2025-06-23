@@ -54,7 +54,7 @@ TILE_LENGHT_IN_PIXELS :: 16
 TILE_LENGTH :: TILE_LENGHT_IN_PIXELS * GAME_SCALE
 
 // Nombre max d'entités dans le monde.
-MAX_ENTITY :: 32
+MAX_ENTITY :: 9999
 
 // On va essayer de faire en sorte que ça respecte le nom des fichiers.
 Texture_type :: enum {
@@ -545,15 +545,15 @@ main :: proc() {
                         game_create_n_number_of_item_from_entity(&game, 1, 1, .item_small_rock, entity_below_mouse^)
                     }
                     // Bugs à corriger.
-                    for i in 0..<game.current_entity_number {
+                    /* for i in 0..<game.current_entity_number {
                         last_index := game.current_entity_number - 1
                         last_entity := game.entities[last_index]
                         if !game.entities[i].alive {
                             game.entities[i] = last_entity
                         }
-                    }
+                    } */
                     mem.set(entity_below_mouse, 0, size_of(Entity)) // On erase l'entity comme ça pour l'instant
-                    game.current_entity_number -= 1
+                    // game.current_entity_number -= 1
                 }
             }
         }
@@ -563,7 +563,8 @@ main :: proc() {
                 append(&player_pointer.inventory, entity_below_mouse^)
                 // On doit faire en sorte que la tile ne soit plus occupé maintenant.
             }
-            fmt.println(player_pointer.inventory)
+
+            if entity_below_mouse == nil do fmt.println(player_pointer.inventory)
         }
 
         // Player deplacement
@@ -590,7 +591,7 @@ main :: proc() {
         player_pointer.pos += linalg.normalize0(player_pointer.vel) * dt * 100 // Normalisation du vecteur
         player_pointer.tile_pos = {int(player_pointer.pos.x) / TILE_LENGTH, int(player_pointer.pos.y) / TILE_LENGTH}
 
-        animate_vector2_to_target(&player_camera.target, player_pointer.pos, dt, 20.0) // Anime la caméra vers le joueur
+        animate_vector2_to_target(&player_camera.target, player_pointer.pos, dt, 20.0) // Anime la caméra vers la position du joueur.
 
         game_check_tiles_occuped(&game)
 
