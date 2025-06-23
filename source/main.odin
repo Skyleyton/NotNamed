@@ -558,13 +558,19 @@ main :: proc() {
             }
         }
         else if rl.IsMouseButtonPressed(.RIGHT) {
-            if entity_below_mouse != nil && entity_below_mouse.type == .item {
-                entity_below_mouse.flags += {.in_inventory} // On rajoute l'entité dans l'inventaire.
-                append(&player_pointer.inventory, entity_below_mouse^)
-                // On doit faire en sorte que la tile ne soit plus occupé maintenant.
-            }
-
             if entity_below_mouse == nil do fmt.println(player_pointer.inventory)
+        }
+
+        // Add item to inventory
+        for &en in game.entities {
+            if en.type == .item {
+                if linalg.distance(player_pointer.pos, en.pos) <= 20.0 {
+                    en.flags += {.in_inventory} // On rajoute l'entité dans l'inventaire.
+                    append(&player_pointer.inventory, en)
+
+                    mem.set(&en, 0, size_of(Entity)) // On erase l'entité, à voir si ça fonctionne correctement.
+                }
+            }
         }
 
         // Player deplacement
@@ -596,6 +602,7 @@ main :: proc() {
         game_check_tiles_occuped(&game)
 
         // Rect setting
+        offset_y: f32 // Nécessaire pour la bonne position du rectangle, mais également pour le rendering.
         for &en in game.entities {
             if en.alive {
                 scaled_width: f32 = f32(en.texture.width) * GAME_SCALE
@@ -608,6 +615,11 @@ main :: proc() {
                 }
                 else {
                     en.rect.y = en.pos.y - scaled_height / 2.0
+                }
+
+                if en.type == .item {
+                    offset_y = sin_breath(f32(rl.GetTime()), 10.0)
+                    en.rect.y += offset_y
                 }
 
                 en.rect.width = scaled_width
@@ -677,8 +689,8 @@ main :: proc() {
 
                 case .item:
                     if .in_inventory not_in en.flags {
-                        offset_y := sin_breath(f32(rl.GetTime()), 10.0)
                         draw_sprite(en.texture, {en.pos.x, en.pos.y + offset_y}, rotation=0, scale=GAME_SCALE)
+                        when ODIN_DEBUG do rl.DrawRectangleLines(i32(en.rect.pos.x), i32(en.rect.pos.y), i32(en.texture.width), i32(en.texture.height), rl.RED)
                     }
             }
         }
