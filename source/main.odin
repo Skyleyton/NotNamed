@@ -1,5 +1,7 @@
 package main
 
+import "core:log"
+import "base:runtime"
 import "core:fmt"
 
 import "core:math"
@@ -482,10 +484,13 @@ animate_vector2_to_target :: proc(value: ^rl.Vector2, target: rl.Vector2, delta_
 }
 
 main :: proc() {
+    context.logger = log.create_console_logger()
+    
     fmt.println("Raylib init !")
     rl.InitWindow(WINDOW_W, WINDOW_H, "Broken Lands"); defer rl.CloseWindow()
     rl.SetConfigFlags({.WINDOW_RESIZABLE})
     rl.SetTargetFPS(240)
+
 
     game_init(&game); defer game_quit(&game)
 
@@ -704,5 +709,9 @@ main :: proc() {
         // Infos rendering
         game_ui_show_entity_type_below_mouse(&game, entity_below_mouse) // On mets ça en dehors pour que ça se base sur l'écran, et non par rapport à la caméra.
         ui_show_fps(rl.WHITE)
+    }
+
+    for x in load_images() {
+        log.debug(x)
     }
 }
