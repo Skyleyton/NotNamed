@@ -1,0 +1,32 @@
+TODO:
+    - Automatic image loader.
+        1. Load the image from an enum, I add some value in the enum then I load the specified texture files in some given folder.
+            1.1. Images need enum
+                - ImagesNeeded enum
+            1.2. Build the Filename
+                - Using fmt.aprintf() I can build a formatted string, thus building the filename.
+            1.3. Search the files in a given folder
+                - I loop on the Texture_Type enum to load all the images I need, they just need to have the same name as the file.
+                - atlas/load_images()
+                - Using os/os2 to load all images files in a directory, it's better than using path/filepath.
+        
+        2. Return the textures array ?
+            - I can do that in both function.
+
+        3. Think about a way to put them into a texture atlas.
+            - Not so needed right now, focus on gameplay ?
+
+    - Atlas from multiple png files.
+        - Not really needed right now.
+    
+    - Animation and better sprites.
+
+    - Building.
+
+    - Ennemies.
+
+    - Better World.
+
+    - Animals.
+
+    - Crafting.
