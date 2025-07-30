@@ -60,16 +60,14 @@ MAX_ENTITY :: 9999
 
 // On va essayer de faire en sorte que ça respecte le nom des fichiers.
 Texture_type :: enum {
-    null,
     herb,
     player,
     rock0,
     tree0,
 
     // Items
-    wood,
-    small_rock,
-    big_rock,    
+    item_tree0,
+    item_small_rock0,
     // TOTAL_TEXTURE_TYPE,
 }
 
@@ -266,8 +264,8 @@ game_create_n_number_of_item_from_entity :: proc(game: ^Game, number: u32, numbe
     }
 
     textures_array: [Texture_type]rl.Texture
-    textures_array[.wood] = rl.LoadTexture("assets/images/item_tree0.png")
-    textures_array[.small_rock] = rl.LoadTexture("assets/images/item_small_rock0.png")
+    textures_array[.item_tree0] = rl.LoadTexture("assets/images/item_tree0.png")
+    textures_array[.item_small_rock0] = rl.LoadTexture("assets/images/item_small_rock0.png")
 
     item_max_stack :: 32
 
@@ -284,11 +282,11 @@ game_create_n_number_of_item_from_entity :: proc(game: ^Game, number: u32, numbe
                     max_stack = item_max_stack
                 },
                 alive = true,
-                texture = textures_array[.wood],
+                texture = textures_array[.item_tree0],
                 rect = {
                     {from_entity.pos.x, from_entity.pos.y},
-                    f32(textures_array[.wood].width),
-                    f32(textures_array[.wood].height)
+                    f32(textures_array[.item_tree0].width),
+                    f32(textures_array[.item_tree0].height)
                 }
             }
             
@@ -303,11 +301,11 @@ game_create_n_number_of_item_from_entity :: proc(game: ^Game, number: u32, numbe
                     max_stack = item_max_stack
                 },
                 alive = true,
-                texture = textures_array[.small_rock],
+                texture = textures_array[.item_small_rock0],
                 rect = {
                     {from_entity.pos.x, from_entity.pos.y},
-                    f32(textures_array[.small_rock].width),
-                    f32(textures_array[.small_rock].height)
+                    f32(textures_array[.item_small_rock0].width),
+                    f32(textures_array[.item_small_rock0].height)
                 }
             }
         }
@@ -711,7 +709,9 @@ main :: proc() {
         ui_show_fps(rl.WHITE)
     }
 
-    for x in load_images() {
-        log.debug(x)
-    }
+    // for x in load_images_from_ImagesNeeded() {
+        // log.debug(x)
+    // }
+
+    textures := load_images_from_Texture_Type()
 }
