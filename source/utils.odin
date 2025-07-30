@@ -58,3 +58,14 @@ get_pivot_value :: proc(pivot: Pivot) -> Vec2f {
 sin_breath :: proc(time: f32, rate: f32) -> f32 {
 	return math.sin(time * 2.0) * rate
 }
+
+// A REVOIR
+Rect :: struct {
+    using pos: Vec2f,
+    width, height: f32,
+}
+
+rect_contains :: proc(rect: Rect, point: [2]f32) -> bool {
+    return (rect.pos.x <= point.x) && (rect.pos.y <= point.y) &&
+    (rect.pos.x + rect.width >= point.x) && (rect.pos.y + rect.height >= point.y) 
+}
